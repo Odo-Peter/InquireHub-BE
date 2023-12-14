@@ -1,0 +1,27 @@
+###
+POST http://localhost:3001/api/users HTTP/1.1
+Content-Type: application/json
+
+{
+    "fullname": "Odo Peter",
+    "email": "test@email.com",
+    "password": "123456"
+}
+###
+
+POST http://localhost:3001/api/login HTTP/1.1
+Content-Type: application/json
+
+{
+    "email": "test@email.com",
+    "password": "123456"
+}
+
+###
+POST http://localhost:3001/api/code HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAZW1haWwuY29tIiwiaWQiOiI2NTdhZDkzYWJmNWZjZDUxNGM5YTQ0N2UiLCJpYXQiOjE3MDI1NTI1NDN9.EJ7ARNJk6Ni868zZLeoUm7BMJrPoSYq9oluItv3p6Rw
+
+{
+    "message": "A simple html button."
+}
