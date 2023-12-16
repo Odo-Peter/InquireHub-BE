@@ -19,6 +19,8 @@ const openai = new OpenAI({
 const { userExtractor } = require('../utils/middleware');
 const Code = require('../Models/Code');
 
+const RATE_LIMIT = 2;
+
 codeRouter.get('/', async (req, res) => {
   const messages = await Code.find({}).populate('user', {
     fullname: 1,
@@ -49,6 +51,14 @@ codeRouter.post('/', userExtractor, async (req, res) => {
     });
   }
 
+  const rateLimit = await user.rateLimit;
+
+  if (rateLimit >= RATE_LIMIT) {
+    res.status(429).json({
+      error: 'Free tier exceeded, subscribe to continue inquiring',
+    });
+  }
+
   const instructionMessage =
     'You are a code generator. You must answer using markdown code snippets. Use code comments for explanation. ';
 
@@ -73,6 +83,7 @@ codeRouter.post('/', userExtractor, async (req, res) => {
 
   const savedCodeSnippet = await newCodeSnippet.save();
   user.code = user.code.concat(savedCodeSnippet._id);
+  user.rateLimit = user.rateLimit + 1;
   await user.save();
 
   res.status(201).json(savedCodeSnippet);

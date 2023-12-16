@@ -19,6 +19,8 @@ const openai = new OpenAI({
 const { userExtractor } = require('../utils/middleware');
 const Article = require('../Models/Articles');
 
+const RATE_LIMIT = 2;
+
 articleRouter.get('/', async (req, res) => {
   const messages = await Article.find({}).populate('user', {
     fullname: 1,
@@ -49,6 +51,14 @@ articleRouter.post('/', userExtractor, async (req, res) => {
     });
   }
 
+  const rateLimit = await user.rateLimit;
+
+  if (rateLimit >= RATE_LIMIT) {
+    res.status(429).json({
+      error: 'Free tier exceeded, subscribe to continue inquiring',
+    });
+  }
+
   const instructionMessage =
     'You are a blog and article generator. You must answer using well elaborated words and sentences. Use headings and subheadings. Write on ';
 
@@ -73,6 +83,7 @@ articleRouter.post('/', userExtractor, async (req, res) => {
 
   const savedArticle = await newArticle.save();
   user.articles = user.articles.concat(savedArticle._id);
+  user.rateLimit = user.rateLimit + 1;
   await user.save();
 
   res.status(201).json(savedArticle);

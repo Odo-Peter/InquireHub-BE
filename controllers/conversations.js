@@ -19,6 +19,8 @@ const openai = new OpenAI({
 const { userExtractor } = require('../utils/middleware');
 const Converations = require('../Models/Converations');
 
+const RATE_LIMIT = 2;
+
 converationRouter.get('/', async (req, res) => {
   const messages = await Converations.find({}).populate('user', {
     fullname: 1,
@@ -49,6 +51,12 @@ converationRouter.post('/', userExtractor, async (req, res) => {
     });
   }
 
+  if (user.rateLimit >= RATE_LIMIT) {
+    res.status(429).json({
+      error: 'Free tier exceeded, subscribe to continue inquiring',
+    });
+  }
+
   const response = await openai.chat.completions.create({
     model: 'gpt-3.5-turbo',
     messages: [{ role: 'user', content: message }],
@@ -70,6 +78,7 @@ converationRouter.post('/', userExtractor, async (req, res) => {
 
   const savedMessage = await newMessage.save();
   user.conversations = user.conversations.concat(savedMessage._id);
+  user.rateLimit = user.rateLimit + 1;
   await user.save();
 
   res.status(201).json(savedMessage);

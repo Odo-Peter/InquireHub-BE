@@ -33,6 +33,7 @@ const userSchema = Schema(
     conversations: [{ type: Schema.Types.ObjectId, ref: 'Conversation' }],
     articles: [{ type: Schema.Types.ObjectId, ref: 'Article' }],
     code: [{ type: Schema.Types.ObjectId, ref: 'Code' }],
+    rateLimit: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
