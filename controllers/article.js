@@ -19,7 +19,7 @@ const openai = new OpenAI({
 const { userExtractor } = require('../utils/middleware');
 const Article = require('../Models/Articles');
 
-const RATE_LIMIT = 2;
+const RATE_LIMIT = 5;
 
 articleRouter.get('/', async (req, res) => {
   const messages = await Article.find({}).populate('user', {
@@ -57,36 +57,39 @@ articleRouter.post('/', userExtractor, async (req, res) => {
     res.status(429).json({
       error: 'Free tier exceeded, subscribe to continue inquiring',
     });
-  }
+  } else {
+    const instructionMessage =
+      'You are a blog and article generator. You must answer using well elaborated words and sentences. Use headings and subheadings. Write on ';
 
-  const instructionMessage =
-    'You are a blog and article generator. You must answer using well elaborated words and sentences. Use headings and subheadings. Write on ';
-
-  const response = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo',
-    messages: [{ role: 'system', content: `${instructionMessage}${message}` }],
-  });
-
-  if (!response) {
-    res.status(400).json({
-      error: 'Something went wrong, try again',
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: `${instructionMessage}${message}` },
+      ],
     });
+
+    if (!response) {
+      res.status(400).json({
+        error: 'Something went wrong, try again',
+      });
+    }
+
+    const { content } = await response.choices[0].message;
+
+    const newArticle = new Article({
+      message,
+      response: content,
+      user: user.id,
+    });
+
+    const savedArticle = await newArticle.save();
+    user.articles = user.articles.concat(savedArticle._id);
+    user.rateLimit =
+      user.rateLimit < RATE_LIMIT ? user.rateLimit + 1 : user.rateLimit + 0;
+    await user.save();
+
+    res.status(201).json(savedArticle);
   }
-
-  const { content } = await response.choices[0].message;
-
-  const newArticle = new Article({
-    message,
-    response: content,
-    user: user.id,
-  });
-
-  const savedArticle = await newArticle.save();
-  user.articles = user.articles.concat(savedArticle._id);
-  user.rateLimit = user.rateLimit + 1;
-  await user.save();
-
-  res.status(201).json(savedArticle);
 });
 
 module.exports = articleRouter;

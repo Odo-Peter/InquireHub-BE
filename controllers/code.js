@@ -19,7 +19,7 @@ const openai = new OpenAI({
 const { userExtractor } = require('../utils/middleware');
 const Code = require('../Models/Code');
 
-const RATE_LIMIT = 2;
+const RATE_LIMIT = 5;
 
 codeRouter.get('/', async (req, res) => {
   const messages = await Code.find({}).populate('user', {
@@ -57,36 +57,39 @@ codeRouter.post('/', userExtractor, async (req, res) => {
     res.status(429).json({
       error: 'Free tier exceeded, subscribe to continue inquiring',
     });
-  }
+  } else {
+    const instructionMessage =
+      'You are a code generator. You must answer using markdown code snippets. Use code comments for explanation. ';
 
-  const instructionMessage =
-    'You are a code generator. You must answer using markdown code snippets. Use code comments for explanation. ';
-
-  const response = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo',
-    messages: [{ role: 'system', content: `${instructionMessage}${message}` }],
-  });
-
-  if (!response) {
-    res.status(400).json({
-      error: 'Something went wrong, try again',
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: `${instructionMessage}${message}` },
+      ],
     });
+
+    if (!response) {
+      res.status(400).json({
+        error: 'Something went wrong, try again',
+      });
+    }
+
+    const { content } = await response.choices[0].message;
+
+    const newCodeSnippet = new Code({
+      message,
+      response: content,
+      user: user.id,
+    });
+
+    const savedCodeSnippet = await newCodeSnippet.save();
+    user.code = user.code.concat(savedCodeSnippet._id);
+    user.rateLimit =
+      user.rateLimit < RATE_LIMIT ? user.rateLimit + 1 : user.rateLimit + 0;
+    await user.save();
+
+    res.status(201).json(savedCodeSnippet);
   }
-
-  const { content } = await response.choices[0].message;
-
-  const newCodeSnippet = new Code({
-    message,
-    response: content,
-    user: user.id,
-  });
-
-  const savedCodeSnippet = await newCodeSnippet.save();
-  user.code = user.code.concat(savedCodeSnippet._id);
-  user.rateLimit = user.rateLimit + 1;
-  await user.save();
-
-  res.status(201).json(savedCodeSnippet);
 });
 
 module.exports = codeRouter;
