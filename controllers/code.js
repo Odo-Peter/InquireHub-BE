@@ -19,8 +19,6 @@ const openai = new OpenAI({
 const { userExtractor } = require('../utils/middleware');
 const Code = require('../Models/Code');
 
-const RATE_LIMIT = 5;
-
 codeRouter.get('/', async (req, res) => {
   const messages = await Code.find({}).populate('user', {
     fullname: 1,
@@ -51,9 +49,10 @@ codeRouter.post('/', userExtractor, async (req, res) => {
     });
   }
 
-  const rateLimit = await user.rateLimit;
+  const rateLimit = await user?.rateLimit;
+  const maxRateLimit = await user?.maxRateLimit;
 
-  if (rateLimit >= RATE_LIMIT) {
+  if (rateLimit >= maxRateLimit) {
     res.status(429).json({
       error: 'Free tier exceeded, subscribe to continue inquiring',
     });
@@ -85,7 +84,7 @@ codeRouter.post('/', userExtractor, async (req, res) => {
     const savedCodeSnippet = await newCodeSnippet.save();
     user.code = user.code.concat(savedCodeSnippet._id);
     user.rateLimit =
-      user.rateLimit < RATE_LIMIT ? user.rateLimit + 1 : user.rateLimit + 0;
+      user.rateLimit < maxRateLimit ? user.rateLimit + 1 : user.rateLimit + 0;
     await user.save();
 
     res.status(201).json(savedCodeSnippet);
