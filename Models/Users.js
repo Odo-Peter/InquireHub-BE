@@ -34,9 +34,8 @@ const userSchema = Schema(
     articles: [{ type: Schema.Types.ObjectId, ref: 'Article' }],
     code: [{ type: Schema.Types.ObjectId, ref: 'Code' }],
     rateLimit: { type: Number, default: 0 },
-    maxRateLimit: { type: Number, default: 10 },
+    maxRateLimit: { type: Number, default: 5 },
     isPro: { type: Boolean, default: false },
-    payStackRef: String,
   },
   { timestamps: true }
 );

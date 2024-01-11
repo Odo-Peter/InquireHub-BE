@@ -36,7 +36,7 @@ paystackRouter.post('/', userExtractor, async (req, res) => {
     const formData = JSON.stringify({
       email: user.email,
       fullname: user.fullname,
-      amount: plan,
+      amount: plan * 100,
     });
 
     // options
@@ -50,6 +50,7 @@ paystackRouter.post('/', userExtractor, async (req, res) => {
         'Content-Type': 'application/json',
       },
     };
+
     // client request to paystack API
     const clientReq = https
       .request(options, (apiRes) => {
@@ -64,9 +65,16 @@ paystackRouter.post('/', userExtractor, async (req, res) => {
       })
       .on('error', (error) => {
         console.error(error);
+        res.status(500).json({ error: 'Paystack error' });
       });
     clientReq.write(formData);
     clientReq.end();
+
+    user.isPro = true;
+    user.rateLimit = 0;
+    user.maxRateLimit = 10;
+
+    await user.save();
   } catch (error) {
     // Handle any errors that occur during the request
     console.error(error);
